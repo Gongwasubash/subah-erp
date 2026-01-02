@@ -2,7 +2,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 // Initialize the Google GenAI client with the API key from environment variables.
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
 
 export const getAcademicAdvice = async (studentName: string, marks: any[]) => {
   const prompt = `Analyze the academic performance of student ${studentName} based on these marks: ${JSON.stringify(marks)}. 
