@@ -23,17 +23,17 @@
                 color: black !important;
             }
             @page {
-                size: A4;
+                size: A5 portrait;
                 margin: 0;
             }
-            .a4-page { 
-                width: 210mm; 
-                min-height: 297mm; 
-                padding: 10mm; 
-                margin: 0 auto; 
+            .a5-page { 
+                width: 148mm; 
+                height: 210mm; 
+                padding: 8mm; 
+                margin: 0; 
                 background: white;
                 box-sizing: border-box;
-                page-break-after: always;
+                page-break-inside: avoid;
             }
         }
         .print-only { display: none; }

@@ -1,0 +1,26 @@
+@media print {
+  .a5-page {
+    width: 148mm;
+    height: 210mm;
+    margin: 0;
+    padding: 0;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+  
+  .no-print {
+    display: none !important;
+  }
+  
+  @page {
+    size: A5;
+    margin: 10mm;
+  }
+  
+  body {
+    margin: 0;
+    padding: 0;
+  }
+}

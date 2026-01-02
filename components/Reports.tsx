@@ -13,15 +13,62 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
   const [currentView, setCurrentView] = useState<'summary' | 'matrix' | 'credit-slips'>('summary');
   const [selectedClass, setSelectedClass] = useState('Class 10');
   const [feeStructures, setFeeStructures] = useState<FeeStructure[]>([]);
+  const [feeCategories, setFeeCategories] = useState<string[]>([]);
   
+  // Filter categories into monthly and one-time based on database
+  const monthlyCategories = feeCategories.filter(cat => 
+    cat.toLowerCase().includes('monthly') || 
+    cat.toLowerCase().includes('tuition') ||
+    cat.toLowerCase().includes('bus') ||
+    cat.toLowerCase().includes('transportation') ||
+    cat.toLowerCase().includes('hostel') ||
+    cat.toLowerCase().includes('boarding') ||
+    cat.toLowerCase().includes('computer') ||
+    cat.toLowerCase().includes('late payment')
+  );
+  
+  const oneTimeCategories = feeCategories.filter(cat => 
+    cat.toLowerCase().includes('admission') ||
+    cat.toLowerCase().includes('annual') ||
+    cat.toLowerCase().includes('terminal') ||
+    cat.toLowerCase().includes('exam') ||
+    cat.toLowerCase().includes('library') ||
+    cat.toLowerCase().includes('laboratory') ||
+    cat.toLowerCase().includes('sports') ||
+    cat.toLowerCase().includes('id card') ||
+    cat.toLowerCase().includes('diary') ||
+    cat.toLowerCase().includes('calendar') ||
+    cat.toLowerCase().includes('building') ||
+    cat.toLowerCase().includes('maintenance') ||
+    cat.toLowerCase().includes('uniform') ||
+    cat.toLowerCase().includes('field trip') ||
+    cat.toLowerCase().includes('stationery') ||
+    cat.toLowerCase().includes('books') ||
+    cat.toLowerCase().includes('insurance') ||
+    cat.toLowerCase().includes('health') ||
+    cat.toLowerCase().includes('miscellaneous')
+  );
+
+  // Initialize selected categories when fee categories are loaded
+  useEffect(() => {
+    if (monthlyCategories.length > 0 && selectedMonthlyCats.length === 0) {
+      // Don't auto-select, let user choose
+    }
+    if (oneTimeCategories.length > 0 && selectedFixedCats.length === 0) {
+      // Don't auto-select, let user choose
+    }
+  }, [monthlyCategories, oneTimeCategories]);
+
   // Ticking States
   const [selectedMonths, setSelectedMonths] = useState<string[]>([NEPALI_MONTHS[new Date().getMonth() % 12]]);
-  const [selectedMonthlyCats, setSelectedMonthlyCats] = useState<string[]>(['Monthly Tuition Fee']);
-  const [selectedFixedCats, setSelectedFixedCats] = useState<string[]>(['Annual Fee']);
+  const [selectedMonthlyCats, setSelectedMonthlyCats] = useState<string[]>([]);
+  const [selectedFixedCats, setSelectedFixedCats] = useState<string[]>([]);
+  const [categoryMonths, setCategoryMonths] = useState<{[category: string]: string[]}>({});
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
 
   useEffect(() => {
     api.getFeeStructures().then(res => setFeeStructures(res || []));
+    api.getFeeCategories().then(res => setFeeCategories(res || []));
   }, []);
 
   // Advanced Categorized Calculation Engine
@@ -32,8 +79,9 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
       const fixedBreakdown: { category: string; amount: number }[] = [];
 
       // 1. Process Monthly Recurring Fees
-      selectedMonths.forEach(month => {
-        selectedMonthlyCats.forEach(category => {
+      selectedMonthlyCats.forEach(category => {
+        const monthsForCategory = categoryMonths[category] || [];
+        monthsForCategory.forEach(month => {
           const isPaid = fees.some(f => 
             f.studentId === student.studentId && 
             f.month === month && 
@@ -78,17 +126,42 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
         isDefaulter: totalDue > 0
       };
     });
-  }, [students, fees, selectedMonths, selectedMonthlyCats, selectedFixedCats, feeStructures]);
+  }, [students, fees, selectedMonthlyCats, selectedFixedCats, feeStructures, categoryMonths]);
 
   const filteredData = studentDueData.filter(s => s.class === selectedClass);
   const totalOutstanding = studentDueData.reduce((acc, s) => acc + s.totalDue, 0);
+
+  const toggleMonthForCategory = (month: string, category: string) => {
+    setCategoryMonths(prev => {
+      const categoryMonthsList = prev[category] || [];
+      const newMonths = categoryMonthsList.includes(month)
+        ? categoryMonthsList.filter(m => m !== month)
+        : [...categoryMonthsList, month];
+      return { ...prev, [category]: newMonths };
+    });
+  };
 
   const toggleMonth = (m: string) => {
     setSelectedMonths(prev => prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]);
   };
 
   const toggleMonthlyCat = (c: string) => {
-    setSelectedMonthlyCats(prev => prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]);
+    setSelectedMonthlyCats(prev => {
+      if (prev.includes(c)) {
+        setCategoryMonths(prevMonths => {
+          const newMonths = { ...prevMonths };
+          delete newMonths[c];
+          return newMonths;
+        });
+        return prev.filter(x => x !== c);
+      } else {
+        setCategoryMonths(prevMonths => ({
+          ...prevMonths,
+          [c]: [NEPALI_MONTHS[new Date().getMonth() % 12]]
+        }));
+        return [...prev, c];
+      }
+    });
   };
 
   const toggleFixedCat = (c: string) => {
@@ -125,12 +198,39 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
                    <i className="fas fa-calendar-alt mr-2 text-blue-500"></i> Monthly Categories
                 </p>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                   {MONTHLY_FEE_TYPES.map(cat => (
-                     <label key={cat} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedMonthlyCats.includes(cat) ? 'bg-blue-50 border-blue-600' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}>
-                        <input type="checkbox" className="hidden" checked={selectedMonthlyCats.includes(cat)} onChange={() => toggleMonthlyCat(cat)} />
-                        <i className={`fas ${selectedMonthlyCats.includes(cat) ? 'fa-check-circle text-blue-600' : 'fa-circle text-slate-200'} mr-3`}></i>
-                        <span className="text-[10px] font-black uppercase text-slate-700">{cat}</span>
-                     </label>
+                   {monthlyCategories.map(cat => (
+                     <div key={cat} className="space-y-2">
+                       <label className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedMonthlyCats.includes(cat) ? 'bg-blue-50 border-blue-600' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}>
+                          <input type="checkbox" className="hidden" checked={selectedMonthlyCats.includes(cat)} onChange={() => toggleMonthlyCat(cat)} />
+                          <i className={`fas ${selectedMonthlyCats.includes(cat) ? 'fa-check-circle text-blue-600' : 'fa-circle text-slate-200'} mr-3`}></i>
+                          <span className="text-[10px] font-black uppercase text-slate-700">{cat}</span>
+                       </label>
+                       {selectedMonthlyCats.includes(cat) && (
+                         <div className="ml-6 grid grid-cols-4 gap-1">
+                           {NEPALI_MONTHS.map(m => {
+                             const isPaid = fees.some(f => 
+                               f.feeType === cat && 
+                               f.month === m && 
+                               f.status === 'Paid'
+                             );
+                             return (
+                               <button 
+                                  key={m} 
+                                  onClick={() => toggleMonthForCategory(m, cat)}
+                                  className={`py-1 px-2 rounded text-[8px] font-bold uppercase border transition-all relative ${
+                                    (categoryMonths[cat] || []).includes(m)
+                                      ? 'bg-blue-600 text-white border-blue-600' 
+                                      : 'bg-white text-slate-400 border-slate-200 hover:border-blue-300'
+                                  }`}
+                               >
+                                  {m.slice(0,3)}
+                                  {isPaid && <i className="fas fa-check absolute top-0 right-0 text-green-500 text-[6px]"></i>}
+                               </button>
+                             );
+                           })}
+                         </div>
+                       )}
+                     </div>
                    ))}
                 </div>
              </div>
@@ -138,34 +238,51 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
              {/* Fixed Cats */}
              <div className="space-y-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                   <i className="fas fa-tag mr-2 text-emerald-500"></i> Fixed/One-Time Categories
+                   <i className="fas fa-tag mr-2 text-emerald-500"></i> One-Time Categories
                 </p>
                 <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-2 custom-scroll">
-                   {ONE_TIME_FEE_TYPES.map(cat => (
-                     <label key={cat} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFixedCats.includes(cat) ? 'bg-emerald-50 border-emerald-600' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}>
-                        <input type="checkbox" className="hidden" checked={selectedFixedCats.includes(cat)} onChange={() => toggleFixedCat(cat)} />
-                        <i className={`fas ${selectedFixedCats.includes(cat) ? 'fa-check-circle text-emerald-600' : 'fa-circle text-slate-200'} mr-3`}></i>
-                        <span className="text-[10px] font-black uppercase text-slate-700">{cat}</span>
-                     </label>
-                   ))}
+                   {oneTimeCategories.map(cat => {
+                     const isPaid = fees.some(f => 
+                       f.feeType === cat && 
+                       f.status === 'Paid'
+                     );
+                     return (
+                       <label key={cat} className={`flex items-center p-3 rounded-xl border-2 cursor-pointer transition-all ${selectedFixedCats.includes(cat) ? 'bg-emerald-50 border-emerald-600' : 'bg-slate-50 border-transparent hover:border-slate-200'} relative`}>
+                          <input type="checkbox" className="hidden" checked={selectedFixedCats.includes(cat)} onChange={() => toggleFixedCat(cat)} />
+                          <i className={`fas ${selectedFixedCats.includes(cat) ? 'fa-check-circle text-emerald-600' : 'fa-circle text-slate-200'} mr-3`}></i>
+                          <span className="text-[10px] font-black uppercase text-slate-700">{cat}</span>
+                          {isPaid && <i className="fas fa-check absolute top-2 right-2 text-green-500 text-sm"></i>}
+                       </label>
+                     );
+                   })}
                 </div>
              </div>
 
-             {/* Target Months */}
+             {/* Target Months - Now shows selected categories and their months */}
              <div className="space-y-4">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center">
-                   <i className="fas fa-clock mr-2 text-amber-500"></i> Selected Months (For Monthly Fees)
+                   <i className="fas fa-clock mr-2 text-amber-500"></i> Selected Categories & Months
                 </p>
-                <div className="grid grid-cols-3 gap-2">
-                   {NEPALI_MONTHS.map(m => (
-                     <button 
-                        key={m} 
-                        onClick={() => toggleMonth(m)}
-                        className={`py-2 rounded-lg text-[10px] font-black uppercase border-2 transition-all ${selectedMonths.includes(m) ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-400 border-slate-100 hover:border-slate-300'}`}
-                     >
-                        {m.slice(0,3)}
-                     </button>
-                   ))}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                   {selectedMonthlyCats.length === 0 ? (
+                     <p className="text-[9px] text-gray-500 italic">No monthly categories selected</p>
+                   ) : (
+                     selectedMonthlyCats.map(cat => (
+                       <div key={cat} className="bg-slate-50 p-3 rounded-lg">
+                         <p className="text-[9px] font-bold text-slate-600 mb-2">{cat}</p>
+                         <div className="flex flex-wrap gap-1">
+                           {(categoryMonths[cat] || []).map(month => (
+                             <span key={month} className="bg-blue-600 text-white px-2 py-1 rounded text-[8px] font-bold">
+                               {month.slice(0,3)}
+                             </span>
+                           ))}
+                           {(categoryMonths[cat] || []).length === 0 && (
+                             <span className="text-[8px] text-gray-400 italic">No months selected</span>
+                           )}
+                         </div>
+                       </div>
+                     ))
+                   )}
                 </div>
              </div>
           </div>
@@ -195,13 +312,27 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
                       </td>
                       <td className="px-8 py-5">
                          <div className="text-[10px] font-bold text-slate-600">
-                            {student.monthlyBreakdown.length} months x {selectedMonthlyCats.length} cats
+                            {student.monthlyBreakdown.length > 0 ? (
+                              <div className="space-y-1">
+                                {Object.entries(categoryMonths).map(([cat, months]) => {
+                                  const catBreakdown = student.monthlyBreakdown.filter(b => b.category === cat);
+                                  const catTotal = catBreakdown.reduce((sum, b) => sum + b.amount, 0);
+                                  return catBreakdown.length > 0 ? (
+                                    <div key={cat} className="text-[9px]">
+                                      {cat}: {catBreakdown.length} month{catBreakdown.length > 1 ? 's' : ''} - NPR {catTotal.toLocaleString()}
+                                    </div>
+                                  ) : null;
+                                })}
+                              </div>
+                            ) : 'None'}
                          </div>
                       </td>
                       <td className="px-8 py-5">
                          <div className="flex flex-wrap gap-1">
                             {student.fixedBreakdown.map(b => (
-                               <span key={b.category} className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[8px] font-black uppercase">{b.category}</span>
+                               <span key={b.category} className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded text-[8px] font-black uppercase">
+                                 {b.category}: NPR {b.amount.toLocaleString()}
+                               </span>
                             ))}
                             {student.fixedBreakdown.length === 0 && <span className="text-emerald-500 font-bold">None</span>}
                          </div>
@@ -232,98 +363,70 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
            </button>
         </div>
 
-        <div className="print-only a4-page">
-           <div className="grid grid-cols-1 gap-8">
-              {printableStudents.map((data) => (
-                <div key={data.studentId} className="border-4 border-slate-900 p-8 rounded-3xl relative overflow-hidden break-inside-avoid mb-10">
-                   <div className="text-center border-b-4 border-slate-900 pb-6 mb-8">
-                      <h1 className="text-3xl font-black uppercase tracking-tighter">Subash ERP</h1>
-                      <div className="bg-slate-900 text-white px-10 py-2 rounded-full text-[11px] font-black uppercase tracking-[0.2em] inline-block mt-3 italic shadow-lg">
-                         OFFICIAL FEE REMINDER & CREDIT SLIP
-                      </div>
+        <div className="print-only">
+              {printableStudents.map((data, index) => (
+                <div key={data.studentId} className="a5-page">
+                   {/* Header */}
+                   <div className="text-center pb-3 mb-4">
+                      <h1 className="text-xl font-bold uppercase">SUBASH SCHOOL</h1>
+                      <p className="text-base">Fee Credit Slip & Due Notice</p>
+                      <p className="text-base">Academic Year: 2081 BS</p>
+                      <p className="text-sm">Date Issued: {new Date().toLocaleDateString('en-GB')}</p>
                    </div>
 
-                   <div className="grid grid-cols-2 gap-10 mb-8 border-b-2 border-slate-100 pb-8">
-                      <div className="space-y-1">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Student Information</p>
-                         <h4 className="font-black text-2xl text-slate-900 uppercase">{data.name}</h4>
-                         <p className="font-bold text-slate-500">SID: {data.studentId} • Roll No: {data.rollNo}</p>
-                      </div>
-                      <div className="text-right space-y-1">
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Academic Details</p>
-                         <h4 className="font-black text-2xl text-slate-900 uppercase">{data.class} - {data.section}</h4>
-                         <p className="font-bold text-slate-500 uppercase">Batch Session: 2081 BS</p>
-                      </div>
-                   </div>
-
-                   {/* Itemized Tables */}
-                   <div className="space-y-8">
-                      {data.monthlyBreakdown.length > 0 && (
-                        <div>
-                           <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3 border-l-4 border-blue-600 pl-3">Monthly Arrears Summary</p>
-                           <table className="w-full text-[10px] border-collapse">
-                              <thead>
-                                 <tr className="bg-slate-100 border-t-2 border-b-2 border-slate-900 text-slate-900">
-                                    <th className="py-2 px-4 text-left font-black uppercase">Month</th>
-                                    <th className="py-2 px-4 text-left font-black uppercase">Fee Category</th>
-                                    <th className="py-2 px-4 text-right font-black uppercase">Amount</th>
-                                 </tr>
-                              </thead>
-                              <tbody className="divide-y divide-slate-100 font-bold uppercase">
-                                 {data.monthlyBreakdown.map((item, idx) => (
-                                    <tr key={idx}>
-                                       <td className="py-2 px-4">{item.month}</td>
-                                       <td className="py-2 px-4">{item.category}</td>
-                                       <td className="py-2 px-4 text-right">NPR {item.amount.toLocaleString()}</td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                      )}
-
-                      {data.fixedBreakdown.length > 0 && (
-                        <div>
-                           <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3 border-l-4 border-emerald-600 pl-3">Fixed / One-Time Dues</p>
-                           <table className="w-full text-[10px] border-collapse">
-                              <tbody className="divide-y divide-slate-100 font-bold uppercase border-t-2 border-b-2 border-slate-900">
-                                 {data.fixedBreakdown.map((item, idx) => (
-                                    <tr key={idx}>
-                                       <td className="py-3 px-4 flex items-center">
-                                          <div className="w-2 h-2 rounded-full bg-emerald-500 mr-3"></div>
-                                          {item.category}
-                                       </td>
-                                       <td className="py-3 px-4 text-right font-black text-slate-900">NPR {item.amount.toLocaleString()}</td>
-                                    </tr>
-                                 ))}
-                              </tbody>
-                           </table>
-                        </div>
-                      )}
-                   </div>
-
-                   <div className="flex justify-between items-center bg-slate-900 text-white p-10 rounded-3xl mt-12 shadow-2xl">
+                   {/* Student Info */}
+                   <div className="grid grid-cols-2 gap-4 mb-4 text-base">
                       <div>
-                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Combined Total Due Balance</p>
-                         <h3 className="text-5xl font-black tracking-tighter italic">NPR {data.totalDue.toLocaleString()}</h3>
+                         <p><strong>Name:</strong> {data.name}</p>
+                         <p><strong>Class:</strong> {data.class} - {data.section}</p>
                       </div>
-                      <div className="text-right">
-                         <p className="text-[10px] font-bold uppercase italic opacity-70 mb-1">Required Action</p>
-                         <p className="text-sm font-black uppercase tracking-widest border-b-2 border-white pb-1">Immediate Settlement</p>
+                      <div>
+                         <p><strong>Roll No:</strong> {data.rollNo}</p>
+                         <p><strong>Student ID:</strong> {data.studentId}</p>
                       </div>
                    </div>
 
-                   <div className="mt-12 pt-8 border-t-2 border-dashed border-slate-300 flex justify-between items-end">
-                      <div className="text-[9px] text-slate-400 italic font-black uppercase max-w-[300px] leading-relaxed">
-                         Note: This is an automated financial notice. Please ignore if payment was made in the last 24 hours. Contact administrative desk for queries.
-                      </div>
-                      <div className="text-center w-64 border-t-4 border-slate-900 pt-3">
-                         <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Administrative Seal</p>
+                   {/* Fee Details */}
+                   <div className="mb-4">
+                      <table className="w-full text-base border-collapse border border-black">
+                         <thead>
+                            <tr className="bg-gray-100">
+                               <th className="text-left py-2 px-3 border border-black">Particulars</th>
+                               <th className="text-left py-2 px-3 border border-black">Month</th>
+                               <th className="text-right py-2 px-3 border border-black">Amount (Rs.)</th>
+                            </tr>
+                         </thead>
+                         <tbody>
+                            {data.monthlyBreakdown.map((item, idx) => (
+                               <tr key={idx}>
+                                  <td className="py-2 px-3 border border-black">{item.category}</td>
+                                  <td className="py-2 px-3 border border-black">{item.month}</td>
+                                  <td className="py-2 px-3 text-right border border-black">{item.amount.toLocaleString()}</td>
+                               </tr>
+                            ))}
+                            {data.fixedBreakdown.map((item, idx) => (
+                               <tr key={idx}>
+                                  <td className="py-2 px-3 border border-black">{item.category}</td>
+                                  <td className="py-2 px-3 border border-black">-</td>
+                                  <td className="py-2 px-3 text-right border border-black">{item.amount.toLocaleString()}</td>
+                               </tr>
+                            ))}
+                            <tr className="font-bold bg-gray-50">
+                               <td className="py-2 px-3 border border-black" colSpan={2}>TOTAL AMOUNT DUE</td>
+                               <td className="py-2 px-3 text-right border border-black">Rs. {data.totalDue.toLocaleString()}</td>
+                            </tr>
+                         </tbody>
+                      </table>
+                   </div>
+
+                   {/* Footer */}
+                   <div className="text-base">
+                      <div className="text-center pt-3">
+                         <p className="text-base">Please pay the dues on time to avoid late fees</p>
                       </div>
                    </div>
                 </div>
               ))}
-           </div>
         </div>
       </div>
     );
