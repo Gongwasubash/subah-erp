@@ -1,0 +1,8 @@
+{
+  "name": "Subash ERP",
+  "description": "A comprehensive school management system tailored for the Nepali education system, featuring BS date support, Nepali grading, fee management, and AI-powered academic insights.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ]
+}
