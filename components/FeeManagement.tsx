@@ -128,6 +128,9 @@ const FeeManagement: React.FC<FeeManagementProps> = ({ fees, setFees, students, 
 
   useEffect(() => {
     if (selectedStudent) {
+      // Clear billing items when student changes
+      setBillingItems([]);
+      // Update amounts for existing items
       setBillingItems(prev => prev.map(item => {
         const match = feeStructures.find(s => s.class === selectedStudent.class && s.feeType === item.feeType);
         return match ? { ...item, amount: match.amount } : item;
