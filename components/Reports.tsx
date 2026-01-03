@@ -388,24 +388,43 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
                          </tr>
                       </thead>
                       <tbody>
-                         {printableStudents[0].monthlyBreakdown.map((item, idx) => (
-                           <tr key={idx} className="border-t border-gray-200">
-                              <td className="py-1 px-2 border-r border-gray-300">
-                                 <div className="font-medium">{item.category}</div>
-                                 <div className="text-xs text-gray-500">{item.month}</div>
-                              </td>
-                              <td className="py-1 px-2 text-right">Rs. {item.amount.toLocaleString()}</td>
-                           </tr>
-                         ))}
-                         {printableStudents[0].fixedBreakdown.map((item, idx) => (
-                           <tr key={idx} className="border-t border-gray-200">
-                              <td className="py-1 px-2 border-r border-gray-300">
-                                 <div className="font-medium">{item.category}</div>
-                                 <div className="text-xs text-gray-500">One-time</div>
-                              </td>
-                              <td className="py-1 px-2 text-right">Rs. {item.amount.toLocaleString()}</td>
-                           </tr>
-                         ))}
+                         {(() => {
+                           // Group monthly breakdown by category to show "from to month" format
+                           const groupedMonthly = printableStudents[0].monthlyBreakdown.reduce((acc, item) => {
+                             const existing = acc.find(g => g.category === item.category);
+                             if (existing) {
+                               existing.months.push(item.month);
+                               existing.total += item.amount;
+                             } else {
+                               acc.push({ category: item.category, months: [item.month], total: item.amount });
+                             }
+                             return acc;
+                           }, [] as {category: string, months: string[], total: number}[]);
+                           
+                           return [
+                             ...groupedMonthly.map((group, idx) => (
+                               <tr key={`monthly-${idx}`} className="border-t border-gray-200">
+                                  <td className="py-1 px-2 border-r border-gray-300">
+                                     <div className="font-medium">{group.category}</div>
+                                     <div className="text-xs text-gray-500">
+                                       {group.months.length === 1 ? group.months[0] : 
+                                        group.months.length > 1 ? `${group.months[0]} to ${group.months[group.months.length-1]}` : '-'}
+                                     </div>
+                                  </td>
+                                  <td className="py-1 px-2 text-right">Rs. {group.total.toLocaleString()}</td>
+                               </tr>
+                             )),
+                             ...printableStudents[0].fixedBreakdown.map((item, idx) => (
+                               <tr key={`fixed-${idx}`} className="border-t border-gray-200">
+                                  <td className="py-1 px-2 border-r border-gray-300">
+                                     <div className="font-medium">{item.category}</div>
+                                     <div className="text-xs text-gray-500">One-time</div>
+                                  </td>
+                                  <td className="py-1 px-2 text-right">Rs. {item.amount.toLocaleString()}</td>
+                               </tr>
+                             ))
+                           ];
+                         })()}
                          <tr className="border-t-2 border-gray-400 bg-gray-100">
                             <td className="py-2 px-2 font-bold">TOTAL DUE</td>
                             <td className="py-2 px-2 text-right font-bold">Rs. {printableStudents[0].totalDue.toLocaleString()}</td>
@@ -452,20 +471,39 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
                             </tr>
                          </thead>
                          <tbody>
-                            {data.monthlyBreakdown.map((item, idx) => (
-                               <tr key={idx}>
-                                  <td className="py-2 px-3 border border-black">{item.category}</td>
-                                  <td className="py-2 px-3 border border-black">{item.month}</td>
-                                  <td className="py-2 px-3 text-right border border-black">{item.amount.toLocaleString()}</td>
-                               </tr>
-                            ))}
-                            {data.fixedBreakdown.map((item, idx) => (
-                               <tr key={idx}>
-                                  <td className="py-2 px-3 border border-black">{item.category}</td>
-                                  <td className="py-2 px-3 border border-black">-</td>
-                                  <td className="py-2 px-3 text-right border border-black">{item.amount.toLocaleString()}</td>
-                               </tr>
-                            ))}
+                            {(() => {
+                              // Group monthly breakdown by category to show "from to month" format
+                              const groupedMonthly = data.monthlyBreakdown.reduce((acc, item) => {
+                                const existing = acc.find(g => g.category === item.category);
+                                if (existing) {
+                                  existing.months.push(item.month);
+                                  existing.total += item.amount;
+                                } else {
+                                  acc.push({ category: item.category, months: [item.month], total: item.amount });
+                                }
+                                return acc;
+                              }, [] as {category: string, months: string[], total: number}[]);
+                              
+                              return [
+                                ...groupedMonthly.map((group, idx) => (
+                                  <tr key={`monthly-${idx}`}>
+                                     <td className="py-2 px-3 border border-black">{group.category}</td>
+                                     <td className="py-2 px-3 border border-black">
+                                       {group.months.length === 1 ? group.months[0] : 
+                                        group.months.length > 1 ? `${group.months[0]} to ${group.months[group.months.length-1]}` : '-'}
+                                     </td>
+                                     <td className="py-2 px-3 text-right border border-black">{group.total.toLocaleString()}</td>
+                                  </tr>
+                                )),
+                                ...data.fixedBreakdown.map((item, idx) => (
+                                  <tr key={`fixed-${idx}`}>
+                                     <td className="py-2 px-3 border border-black">{item.category}</td>
+                                     <td className="py-2 px-3 border border-black">-</td>
+                                     <td className="py-2 px-3 text-right border border-black">{item.amount.toLocaleString()}</td>
+                                  </tr>
+                                ))
+                              ];
+                            })()}
                             <tr className="font-bold bg-gray-50">
                                <td className="py-2 px-3 border border-black" colSpan={2}>TOTAL AMOUNT DUE</td>
                                <td className="py-2 px-3 text-right border border-black">Rs. {data.totalDue.toLocaleString()}</td>
