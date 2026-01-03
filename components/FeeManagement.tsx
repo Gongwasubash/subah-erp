@@ -211,6 +211,63 @@ const FeeManagement: React.FC<FeeManagementProps> = ({ fees, setFees, students, 
           </div>
         </div>
 
+        {/* Bill Preview */}
+        <div className="mt-8 bg-white p-6 rounded-2xl shadow-lg border border-slate-200 max-w-md w-full no-print">
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div className="text-center pb-2 mb-3 border-b border-gray-300">
+               <h1 className="text-lg font-bold uppercase">SUBASH SCHOOL</h1>
+               <p className="text-sm">Fee Payment Receipt</p>
+               <p className="text-xs">Receipt: {printBillSet[0].receiptNo}</p>
+            </div>
+            <div className="text-sm space-y-1 mb-3">
+               <p><strong>Student:</strong> {printBillSet[0].studentName}</p>
+               <p><strong>Class:</strong> {printBillSet[0].class}</p>
+               <p><strong>Date:</strong> {printBillSet[0].paidDateBS} BS</p>
+            </div>
+            <div className="border border-gray-300 rounded">
+               <table className="w-full text-xs">
+                  <thead>
+                     <tr className="bg-gray-100">
+                        <th className="text-left py-1 px-2 border-r border-gray-300">Item</th>
+                        <th className="text-right py-1 px-2">Amount</th>
+                     </tr>
+                  </thead>
+                  <tbody>
+                     {(() => {
+                       const groupedItems = printBillSet.reduce((acc, item) => {
+                         const existing = acc.find(g => g.feeType === item.feeType);
+                         if (existing) {
+                           existing.months.push(item.month);
+                           existing.total += item.total;
+                         } else {
+                           acc.push({ feeType: item.feeType, months: [item.month], total: item.total });
+                         }
+                         return acc;
+                       }, [] as {feeType: string, months: string[], total: number}[]);
+                       
+                       return groupedItems.map((group, idx) => (
+                         <tr key={idx} className="border-t border-gray-200">
+                            <td className="py-1 px-2 border-r border-gray-300">
+                               <div className="font-medium">{group.feeType}</div>
+                               <div className="text-xs text-gray-500">
+                                 {group.months.length === 1 ? group.months[0] : 
+                                  group.months.length > 1 ? `${group.months[0]} to ${group.months[group.months.length-1]}` : '-'}
+                               </div>
+                            </td>
+                            <td className="py-1 px-2 text-right font-medium">Rs. {group.total.toLocaleString()}</td>
+                         </tr>
+                       ));
+                     })()}
+                     <tr className="border-t-2 border-gray-400 bg-gray-100">
+                        <td className="py-2 px-2 font-bold">TOTAL</td>
+                        <td className="py-2 px-2 text-right font-bold">Rs. {printBillSet.reduce((acc, curr) => acc + curr.total, 0).toLocaleString()}</td>
+                     </tr>
+                  </tbody>
+               </table>
+            </div>
+          </div>
+        </div>
+
         <div className="print-only a5-page text-slate-900 font-sans">
            <div className="w-full h-full p-4 bg-white text-black">
               {/* Header */}

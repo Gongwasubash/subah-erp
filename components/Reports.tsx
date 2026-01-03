@@ -363,6 +363,61 @@ const Reports: React.FC<ReportsProps> = ({ students, fees }) => {
            </button>
         </div>
 
+        {/* Credit Slip Preview */}
+        <div className="no-print bg-white p-6 rounded-2xl shadow-lg border border-slate-200 max-w-md mx-auto">
+          <h3 className="text-lg font-bold text-center mb-4">Credit Slip Preview</h3>
+          <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+            <div className="text-center pb-2 mb-3 border-b border-gray-300">
+               <h1 className="text-base font-bold uppercase">SUBASH SCHOOL</h1>
+               <p className="text-sm">Fee Credit Slip & Due Notice</p>
+               <p className="text-xs">Date: {new Date().toLocaleDateString('en-GB')}</p>
+            </div>
+            {printableStudents.length > 0 && (
+              <>
+                <div className="text-sm space-y-1 mb-3">
+                   <p><strong>Student:</strong> {printableStudents[0].name}</p>
+                   <p><strong>Class:</strong> {printableStudents[0].class}</p>
+                   <p><strong>Total Due:</strong> Rs. {printableStudents[0].totalDue.toLocaleString()}</p>
+                </div>
+                <div className="border border-gray-300 rounded">
+                   <table className="w-full text-xs">
+                      <thead>
+                         <tr className="bg-gray-100">
+                            <th className="text-left py-1 px-2 border-r border-gray-300">Particulars</th>
+                            <th className="text-right py-1 px-2">Amount</th>
+                         </tr>
+                      </thead>
+                      <tbody>
+                         {printableStudents[0].monthlyBreakdown.map((item, idx) => (
+                           <tr key={idx} className="border-t border-gray-200">
+                              <td className="py-1 px-2 border-r border-gray-300">
+                                 <div className="font-medium">{item.category}</div>
+                                 <div className="text-xs text-gray-500">{item.month}</div>
+                              </td>
+                              <td className="py-1 px-2 text-right">Rs. {item.amount.toLocaleString()}</td>
+                           </tr>
+                         ))}
+                         {printableStudents[0].fixedBreakdown.map((item, idx) => (
+                           <tr key={idx} className="border-t border-gray-200">
+                              <td className="py-1 px-2 border-r border-gray-300">
+                                 <div className="font-medium">{item.category}</div>
+                                 <div className="text-xs text-gray-500">One-time</div>
+                              </td>
+                              <td className="py-1 px-2 text-right">Rs. {item.amount.toLocaleString()}</td>
+                           </tr>
+                         ))}
+                         <tr className="border-t-2 border-gray-400 bg-gray-100">
+                            <td className="py-2 px-2 font-bold">TOTAL DUE</td>
+                            <td className="py-2 px-2 text-right font-bold">Rs. {printableStudents[0].totalDue.toLocaleString()}</td>
+                         </tr>
+                      </tbody>
+                   </table>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
         <div className="print-only">
               {printableStudents.map((data, index) => (
                 <div key={data.studentId} className="a5-page">
